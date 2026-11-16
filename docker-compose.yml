@@ -1,0 +1,126 @@
+# Homelab IA — phase 1 (option A : API Claude)
+# Debian 13 + Docker Engine + Tailscale installé sur l'hôte.
+#
+# Règle de sécurité : Docker contourne ufw pour les ports publiés.
+# Aucun port n'est donc publié sur 0.0.0.0 :
+#   - Caddy écoute uniquement sur l'IP Tailscale (TS_IP)
+#   - Whisper / Piper uniquement sur 127.0.0.1 (pour Home Assistant)
+#   - PostgreSQL et Open WebUI ne sont pas publiés du tout
+
+name: homelab
+
+services:
+
+  # ── Reverse proxy HTTPS (certificats *.ts.net fournis par Tailscale) ──
+  caddy:
+    image: caddy:2.10-alpine
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "${TS_IP}:443:443"     # Open WebUI
+      - "${TS_IP}:8443:8443"   # Home Assistant
+    environment:
+      TS_HOSTNAME: ${TS_HOSTNAME}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+      # Caddy récupère les certificats HTTPS auprès de tailscaled
+      - /var/run/tailscale/tailscaled.sock:/var/run/tailscale/tailscaled.sock
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # pour joindre Home Assistant (réseau hôte)
+    depends_on:
+      - open-webui
+
+  # ── Interface de chat multi-utilisateur, branchée sur l'API Claude ──
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main   # épingle une version précise une fois validée
+    container_name: open-webui
+    restart: unless-stopped
+    environment:
+      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY}
+      WEBUI_URL: https://${TS_HOSTNAME}
+      # Pas d'Ollama en option A
+      ENABLE_OLLAMA_API: "false"
+      # Couche de compatibilité OpenAI de l'API Anthropic (pratique pour le chat de phase 1 ;
+      # ton backend FastAPI utilisera le SDK officiel `anthropic`)
+      OPENAI_API_BASE_URL: https://api.anthropic.com/v1
+      OPENAI_API_KEY: ${ANTHROPIC_API_KEY}
+      # Le 1er compte créé est admin ; les suivants attendent ta validation
+      DEFAULT_USER_ROLE: pending
+      TZ: ${TZ}
+    volumes:
+      - openwebui_data:/app/backend/data
+
+  # ── Domotique ──
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    restart: unless-stopped
+    network_mode: host          # découverte mDNS, ESPHome, Bluetooth
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - ./homeassistant:/config
+      - /etc/localtime:/etc/localtime:ro
+      - /run/dbus:/run/dbus:ro  # Bluetooth (optionnel)
+
+  # ── Voix → texte (Wyoming, utilisé par Home Assistant puis par le backend) ──
+  whisper:
+    image: rhasspy/wyoming-whisper:latest
+    container_name: whisper
+    restart: unless-stopped
+    command: --model small-int8 --language fr --beam-size 1
+    ports:
+      - "127.0.0.1:10300:10300"
+    volumes:
+      - whisper_data:/data
+
+  # ── Texte → voix (Wyoming) ──
+  piper:
+    image: rhasspy/wyoming-piper:latest
+    container_name: piper
+    restart: unless-stopped
+    command: --voice fr_FR-siwis-medium
+    ports:
+      - "127.0.0.1:10200:10200"
+    volumes:
+      - piper_data:/data
+
+  # ── Base de données (backend FastAPI en phase 3 : santé, mémoire, profils) ──
+  postgres:
+    image: postgres:17-alpine
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      TZ: ${TZ}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Phase 3 : ton backend (décommenter quand il existe) ──
+  # backend:
+  #   build: ./backend
+  #   container_name: backend
+  #   restart: unless-stopped
+  #   environment:
+  #     ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+  #     DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+
+volumes:
+  caddy_data:
+  caddy_config:
+  openwebui_data:
+  whisper_data:
+  piper_data:
+  postgres_data:

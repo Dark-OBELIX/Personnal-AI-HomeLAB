@@ -1,0 +1,10 @@
+.env
+*.env.local
+
+# Données générées par Home Assistant (on ne versionne que la config)
+homeassistant/*
+!homeassistant/configuration.yaml
+
+# Divers
+get-docker.sh
+.DS_Store
