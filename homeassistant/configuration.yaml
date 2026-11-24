@@ -1,10 +1,11 @@
-# Configuration minimale de Home Assistant derrière Caddy.
+# Configuration minimale de Home Assistant.
 # HA génère le reste au premier démarrage.
 
 default_config:
 
+# Accès à distance via `tailscale serve`, qui relaie depuis localhost
 http:
   use_x_forwarded_for: true
   trusted_proxies:
-    - 172.16.0.0/12   # réseaux Docker (Caddy)
     - 127.0.0.1
+    - ::1
