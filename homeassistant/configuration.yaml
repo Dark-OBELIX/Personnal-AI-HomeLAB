@@ -1,11 +1,9 @@
 # Configuration minimale de Home Assistant.
 # HA génère le reste au premier démarrage.
+#
+# Pas de bloc `http:` : les versions récentes de Home Assistant ignorent ces
+# réglages en YAML et les gèrent dans Paramètres → Système → Réseau.
+# L'accès à distance passe par `tailscale serve` en mode TCP (voir README),
+# qui n'a pas besoin de réglage de proxy.
 
 default_config:
-
-# Accès à distance via `tailscale serve`, qui relaie depuis localhost
-http:
-  use_x_forwarded_for: true
-  trusted_proxies:
-    - 127.0.0.1
-    - ::1

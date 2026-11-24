@@ -7,7 +7,7 @@
 #   assistant      bot Discord (profil "bot", à activer quand le code existe)
 #
 # Docker contourne ufw pour les ports publiés : rien n'est publié sur 0.0.0.0.
-# Accès à distance à Home Assistant : `sudo tailscale serve --bg http://localhost:8123`
+# Accès à distance à Home Assistant : `sudo tailscale serve --bg --tls-terminated-tcp=443 tcp://localhost:8123`
 
 name: homelab
 
