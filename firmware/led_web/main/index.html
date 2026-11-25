@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bandeau LED</title>
+<style>
+  :root {
+    --bg: #12141a;
+    --card: #1c1f27;
+    --text: #e8eaf0;
+    --muted: #8a90a0;
+    --accent: #ffffff;
+    --radius: 18px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+  .card {
+    width: 100%;
+    max-width: 420px;
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.4);
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  h1 { font-size: 20px; margin: 0; font-weight: 600; }
+  .status { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+  /* Interrupteur */
+  .switch { position: relative; width: 64px; height: 36px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider-sw {
+    position: absolute; inset: 0; cursor: pointer;
+    background: #3a3f4b; border-radius: 36px; transition: .25s;
+  }
+  .slider-sw::before {
+    content: ""; position: absolute; width: 28px; height: 28px; left: 4px; top: 4px;
+    background: #fff; border-radius: 50%; transition: .25s;
+  }
+  .switch input:checked + .slider-sw { background: var(--accent); }
+  .switch input:checked + .slider-sw::before { transform: translateX(28px); background: #1c1f27; }
+
+  /* Aperçu */
+  .preview {
+    height: 90px;
+    border-radius: 14px;
+    margin-bottom: 24px;
+    background: #000;
+    transition: background .2s, box-shadow .2s, opacity .2s;
+  }
+
+  .section { margin-bottom: 22px; }
+  .label {
+    display: flex; justify-content: space-between;
+    font-size: 13px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .06em;
+    margin-bottom: 10px;
+  }
+
+  /* Couleurs */
+  .swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+  .swatch {
+    aspect-ratio: 1; border-radius: 50%; border: 3px solid transparent;
+    cursor: pointer; padding: 0;
+  }
+  .swatch.active { border-color: var(--text); }
+  .custom {
+    display: flex; align-items: center; gap: 12px; margin-top: 14px;
+    font-size: 14px; color: var(--muted);
+  }
+  input[type=color] {
+    width: 48px; height: 36px; border: none; border-radius: 8px;
+    background: none; cursor: pointer; padding: 0;
+  }
+
+  /* Luminosité */
+  input[type=range] {
+    width: 100%; -webkit-appearance: none; appearance: none;
+    height: 8px; border-radius: 8px; outline: none;
+    background: linear-gradient(to right, #333 0%, var(--accent) 100%);
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%;
+    background: #fff; border: 3px solid var(--card); cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,.5);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #fff; border: 3px solid var(--card); cursor: pointer;
+  }
+
+  /* Presets */
+  .presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .preset {
+    position: relative;
+    background: #262a34; border: 2px solid transparent; border-radius: 12px;
+    padding: 12px 8px 10px; cursor: pointer; color: var(--text);
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    font-size: 13px;
+  }
+  .preset.active { border-color: var(--text); }
+  .preset .dot { width: 30px; height: 30px; border-radius: 50%; }
+  .preset .del {
+    position: absolute; top: 2px; right: 6px;
+    background: none; border: none; color: var(--muted);
+    font-size: 16px; cursor: pointer; padding: 2px;
+  }
+  .preset .del:hover { color: #ff5c5c; }
+  .empty { font-size: 13px; color: var(--muted); grid-column: 1 / -1; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 10px; }
+  .hint code { color: var(--text); }
+
+  .add {
+    width: 100%; margin-top: 4px; padding: 14px;
+    background: none; color: var(--text);
+    border: 2px dashed #3a3f4b; border-radius: 12px;
+    font-size: 16px; cursor: pointer;
+  }
+  .add:hover { border-color: var(--accent); }
+
+  .saved { font-size: 12px; color: var(--muted); text-align: center; min-height: 16px; margin-top: 12px; }
+  .off .section:not(.presets-section) { opacity: .45; }
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <header>
+    <div>
+      <h1 id="title">Bandeau LED</h1>
+      <div class="status" id="status">Connexion…</div>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="power">
+      <span class="slider-sw"></span>
+    </label>
+  </header>
+
+  <div class="preview" id="preview"></div>
+
+  <div class="section">
+    <div class="label"><span>Couleur</span></div>
+    <div class="swatches" id="swatches"></div>
+    <div class="custom">
+      <input type="color" id="color" value="#ffffff">
+      <span>Couleur personnalisée</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="label"><span>Luminosité</span><span id="brVal">100 %</span></div>
+    <input type="range" id="brightness" min="1" max="255" value="255">
+  </div>
+
+  <div class="section presets-section">
+    <div class="label"><span>Mes presets</span></div>
+    <div class="presets" id="presets"></div>
+    <div class="hint">Accès direct : <code id="hintUrl">http://ip/preset1</code> (un 2e appel éteint)</div>
+  </div>
+
+  <button class="add" id="add">+ Enregistrer comme preset</button>
+
+  <div class="saved" id="saved"></div>
+</div>
+
+<script>
+const PRESETS = ["#ffffff", "#ffb46b", "#ff0000", "#ff7a00", "#ffe600", "#00ff40",
+                 "#00e5ff", "#0040ff", "#8000ff", "#ff00c8", "#ff4060", "#40ffb0"];
+
+const $ = id => document.getElementById(id);
+const state = { on: false, color: "#ffffff", br: 255, active: 0, presets: [] };
+$("hintUrl").textContent = `http://${location.host || "ip"}/preset1`;
+
+// Construit les pastilles de couleur
+PRESETS.forEach(c => {
+  const b = document.createElement("button");
+  b.className = "swatch";
+  b.style.background = c;
+  b.dataset.color = c;
+  b.onclick = () => { state.color = c; render(); send(); };
+  $("swatches").appendChild(b);
+});
+
+function render() {
+  const pct = Math.round(state.br / 255 * 100);
+  $("power").checked = state.on;
+  $("color").value = state.color;
+  $("brightness").value = state.br;
+  $("brVal").textContent = pct + " %";
+  $("status").textContent = state.on ? "Allumé" : "Éteint";
+  $("card").classList.toggle("off", !state.on);
+  document.documentElement.style.setProperty("--accent", state.color);
+
+  const p = $("preview");
+  p.style.background = state.on ? state.color : "#000";
+  p.style.opacity = state.on ? (0.25 + 0.75 * state.br / 255) : 1;
+  p.style.boxShadow = state.on ? `0 0 ${10 + pct / 2}px ${state.color}` : "none";
+
+  document.querySelectorAll(".swatch").forEach(s =>
+    s.classList.toggle("active", s.dataset.color === state.color));
+
+  renderPresets();
+}
+
+function renderPresets() {
+  const box = $("presets");
+  box.innerHTML = "";
+  if (!state.presets.length) {
+    box.innerHTML = '<div class="empty">Aucun preset. Règle une couleur puis appuie sur +.</div>';
+    return;
+  }
+  state.presets.forEach(p => {
+    const el = document.createElement("div");
+    el.className = "preset" + (state.on && state.active === p.id ? " active" : "");
+    el.innerHTML = `<button class="del" title="Supprimer">×</button>
+      <div class="dot"></div><span>Preset ${p.id}</span>`;
+    const dot = el.querySelector(".dot");
+    dot.style.background = "#" + p.color;
+    dot.style.opacity = 0.3 + 0.7 * p.br / 255;
+    el.onclick = () => call("/preset" + p.id);
+    el.querySelector(".del").onclick = e => {
+      e.stopPropagation();
+      if (confirm(`Supprimer le preset ${p.id} ?`)) call("/api/presets/del?id=" + p.id, `Preset ${p.id} supprimé`);
+    };
+    box.appendChild(el);
+  });
+}
+
+function applyState(s) {
+  if (s.name) { $("title").textContent = s.name; document.title = s.name; }
+  state.on = !!s.on;
+  state.color = "#" + s.color;
+  state.br = s.br;
+  state.active = s.active;
+  state.presets = s.presets;
+  render();
+}
+
+async function call(url, msg) {
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(await r.text());
+    applyState(await r.json());
+    if (msg) $("saved").textContent = msg;
+  } catch (e) {
+    $("saved").textContent = "Erreur : " + e.message;
+  }
+}
+
+function refresh() {
+  fetch("/state").then(r => r.json()).then(applyState)
+    .catch(() => { $("status").textContent = "Hors ligne"; });
+}
+
+// Envoi limité : une seule requête en cours, la dernière valeur gagne
+let busy = false, pending = false;
+async function send() {
+  if (busy) { pending = true; return; }
+  busy = true;
+  try {
+    const q = `on=${state.on ? 1 : 0}&color=${state.color.slice(1)}&br=${state.br}`;
+    const r = await fetch("/set?" + q);
+    if (r.ok) {
+      const s = await r.json();
+      state.active = s.active;
+      renderPresets();
+      $("saved").textContent = "Réglage enregistré";
+    }
+  } catch (e) {
+    $("saved").textContent = "Erreur de communication";
+  }
+  busy = false;
+  if (pending) { pending = false; send(); }
+}
+
+$("power").onchange = e => { state.on = e.target.checked; render(); send(); };
+$("color").oninput = e => { state.color = e.target.value; render(); send(); };
+$("brightness").oninput = e => { state.br = +e.target.value; render(); send(); };
+
+$("add").onclick = () => call("/api/presets/add", "Preset enregistré");
+
+// Charge l'état actuel au démarrage, et le recharge quand on revient sur la page
+// (un preset a pu être lancé depuis une autre machine via /presetN)
+refresh();
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+
+render();
+</script>
+</body>
+</html>

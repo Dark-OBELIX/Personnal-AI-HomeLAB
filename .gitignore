@@ -4,6 +4,16 @@
 # Données générées par Home Assistant (on ne versionne que la config)
 homeassistant/*
 !homeassistant/configuration.yaml
+!homeassistant/www/
+homeassistant/www/*
+!homeassistant/www/led-strip-card.js
+
+# Firmware ESP-IDF : compilation et configuration locale
+firmware/*/build/
+firmware/*/sdkconfig
+firmware/*/sdkconfig.old
+firmware/*/managed_components/
+firmware/*/dependencies.lock
 
 # Divers
 get-docker.sh
