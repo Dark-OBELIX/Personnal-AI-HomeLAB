@@ -3,6 +3,7 @@
 #
 #   homeassistant  domotique, réseau de l'hôte
 #   mosquitto      broker MQTT (bandeau LED, objets ESP32), réseau de l'hôte
+#   adguardhome    filtrage DNS des publicités et pisteurs, réseau de l'hôte
 #   ollama         modèle local qwen3:4b sur le CPU
 #   postgres       repas, eau, poids, données Garmin
 #   assistant      bot Discord (profil "bot", à activer quand le code existe)
@@ -50,6 +51,19 @@ services:
     volumes:
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - mosquitto_data:/mosquitto/data
+
+  # ── Filtrage DNS : publicités et pisteurs pour toute la maison ──
+  # Réseau de l'hôte. Le DNS écoute sur l'IP locale et l'IP Tailscale du serveur (bind_hosts,
+  # voir README), pas sur 127.0.0.53 qu'utilise déjà systemd-resolved.
+  # Interface d'administration : http://serveurhome:3000 depuis un appareil Tailscale.
+  adguardhome:
+    image: adguard/adguardhome:latest   # épingle une version précise une fois validée
+    container_name: adguardhome
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./adguardhome/conf:/opt/adguardhome/conf   # AdGuardHome.yaml (non versionné)
+      - adguard_work:/opt/adguardhome/work         # statistiques, journal, listes
 
   # ── Modèle local (CPU) ──
   ollama:
@@ -127,6 +141,7 @@ networks:
         - subnet: 172.30.0.0/24
 
 volumes:
+  adguard_work:
   mosquitto_data:
   ollama_data:
   postgres_data:

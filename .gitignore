@@ -8,6 +8,9 @@ homeassistant/*
 homeassistant/www/*
 !homeassistant/www/led-strip-card.js
 
+# AdGuard Home : configuration générée (contient le mot de passe administrateur)
+adguardhome/
+
 # Firmware ESP-IDF : compilation et configuration locale
 firmware/*/build/
 firmware/*/sdkconfig
